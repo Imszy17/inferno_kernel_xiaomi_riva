@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2019, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -122,7 +122,6 @@ struct geni_i2c_dev {
 	struct msm_gpi_dma_async_tx_cb_param rx_cb;
 	enum i2c_se_mode se_mode;
 	bool autosuspend_disable;
-	bool disable_dma_mode;
 };
 
 struct geni_i2c_err_log {
@@ -687,15 +686,6 @@ static int geni_i2c_xfer(struct i2c_adapter *adap,
 		gi2c->cur = &msgs[i];
 		qcom_geni_i2c_calc_timeout(gi2c);
 		mode = msgs[i].len > 32 ? SE_DMA : FIFO_MODE;
-
-		/* Complete the transfer in FIFO mode if DMA mode
-		 * is not supported for some Automotive platform.
-		 */
-		if (gi2c->disable_dma_mode) {
-			GENI_SE_DBG(gi2c->ipcl, false, gi2c->dev,
-					"Disable DMA mode\n");
-			mode = FIFO_MODE;
-		}
 		ret = geni_se_select_mode(gi2c->base, mode);
 		if (ret) {
 			dev_err(gi2c->dev, "%s: Error mode init %d:%d:%d\n",
@@ -907,9 +897,6 @@ static int geni_i2c_probe(struct platform_device *pdev)
 
 	gi2c->autosuspend_disable = of_property_read_bool(pdev->dev.of_node,
 									"qcom,disable-autosuspend");
-
-	gi2c->disable_dma_mode = of_property_read_bool(pdev->dev.of_node,
-					"qcom,disable-dma");
 
 	gi2c->irq = platform_get_irq(pdev, 0);
 	if (gi2c->irq < 0) {
